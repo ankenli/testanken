@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="客戶名單">
+<title>客戶名單</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f1ea;--card:#fffdf8;--ink:#2c2a26;--muted:#8a857c;--line:#e4dfd4;
+--shu:#2f7d5b;--shu-bg:#e3f1ea;--bushu:#c2772b;--bushu-bg:#f6e9d7;--bz:#5b6b8a;--bz-bg:#e6eaf1;--none:#b6b0a4;--none-bg:#efece4;
+--tlb:#9a5b9c;--done:#2f7d5b;--red:#c0392b;--warn:#e67e22;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC",sans-serif;padding:0 0 80px;}
+
+#setupPage{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:30px 20px;}
+.setup-box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px 22px;max-width:400px;width:100%;}
+.setup-box h2{font-family:"Noto Serif TC",serif;font-size:20px;margin:0 0 8px;}
+.setup-box p{color:var(--muted);font-size:14px;margin:0 0 20px;line-height:1.6;}
+.setup-box input{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:15px;font-family:inherit;background:var(--bg);color:var(--ink);margin-bottom:12px;}
+.setup-box button{width:100%;border:none;background:var(--ink);color:#fff;border-radius:10px;padding:13px;font-size:16px;font-weight:500;font-family:inherit;cursor:pointer;}
+.setup-err{color:var(--red);font-size:13px;margin-top:8px;display:none;}
+
+#loadingPage{display:none;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:12px;}
+#loadingPage p{color:var(--muted);font-size:15px;}
+
+#listPage{display:none;padding:18px 14px;}
+.wrap{max-width:580px;margin:0 auto;}
+h1{font-family:"Noto Serif TC",serif;font-weight:700;font-size:22px;margin:0 0 2px;}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+.sync-status{font-size:12px;padding:3px 10px;border-radius:99px;font-weight:500;}
+.sync-ok{background:var(--shu-bg);color:var(--shu);}
+.sync-ing{background:#fef9e7;color:#b7950b;}
+.sync-err{background:#fdf2f2;color:var(--red);}
+.tab-bar{display:flex;border-bottom:2px solid var(--line);margin-bottom:16px;}
+.tab{flex:1;padding:12px 0;text-align:center;font-size:15px;font-weight:500;color:var(--muted);cursor:pointer;border:none;background:none;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-2px;}
+.tab.active{color:var(--ink);border-bottom-color:var(--ink);}
+.regionbar{display:flex;gap:8px;margin-bottom:10px;}
+.regionbar select{flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;font-family:inherit;background:var(--card);color:var(--ink);}
+.searchbar{position:relative;margin-bottom:12px;}
+.searchbar input{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 14px 10px 38px;font-size:15px;font-family:inherit;background:var(--card);color:var(--ink);}
+.searchbar input:focus{outline:none;border-color:var(--muted);}
+.searchbar::before{content:"🔍";position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;}
+.filter-group{margin-bottom:8px;}
+.filter-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;margin-bottom:6px;}
+.filters{display:flex;gap:6px;flex-wrap:wrap;}
+.fbtn{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:99px;padding:6px 12px;font-size:12.5px;font-family:inherit;cursor:pointer;font-weight:500;}
+.fbtn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+.fbtn.f-today{border-color:var(--call);color:var(--call);}.fbtn.f-today.active{background:var(--call);color:#fff;}
+.fbtn.f-new{border-color:#9b59b6;color:#9b59b6;}.fbtn.f-new.active{background:#9b59b6;color:#fff;}
+.fbtn.f-overdue{border-color:var(--red);color:var(--red);}.fbtn.f-overdue.active{background:var(--red);color:#fff;}
+.fbtn.f-soon{border-color:var(--warn);color:var(--warn);}.fbtn.f-soon.active{background:var(--warn);color:#fff;}
+.plist{display:flex;flex-direction:column;gap:6px;margin-top:14px;}
+.prow{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px;cursor:pointer;user-select:none;transition:transform .06s;}
+.prow:active{transform:scale(.98);}
+.prow.overdue{border-color:var(--red);background:#fff8f8;}
+.prow.soon{border-color:var(--warn);background:#fffbf5;}
+.prow.isnew{border-color:#9b59b6;background:#fdf8ff;}
+.pname{flex:1;font-size:16px;font-weight:500;}
+.prg{font-size:12px;color:var(--muted);}
+.pbadges{display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
+.pbadge{font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;}
+.pb-shu{background:var(--shu-bg);color:var(--shu);}
+.pb-pu{background:var(--bushu-bg);color:var(--bushu);}
+.pb-bz{background:var(--bz-bg);color:var(--bz);}
+.pb-none{background:var(--none-bg);color:var(--none);}
+.pb-know{background:#e8f4e8;color:#3a7d3a;}
+.pb-unknow{background:#f4e8e8;color:#7d3a3a;}
+.pb-tl{background:#f3e8ff;color:var(--tlb);}
+.pb-overdue{background:#fde8e8;color:var(--red);}
+.pb-soon{background:#fef0e0;color:var(--warn);}
+.pb-new{background:#f3e8ff;color:#9b59b6;}
+.arrow{color:var(--muted);font-size:18px;}
+.empty{text-align:center;color:var(--muted);padding:40px 0;font-size:14px;}
+.list-tools{display:flex;justify-content:flex-end;margin-top:12px;}
+.reset{background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;}
+.fab{position:fixed;bottom:28px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--ink);color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:100;transition:transform .1s;}
+.fab:active{transform:scale(.92);}
+
+/* JOURNAL */
+.journal-date-row{display:flex;gap:8px;align-items:center;margin-bottom:14px;}
+.journal-date-row input[type=date]{flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;font-family:inherit;background:var(--card);color:var(--ink);}
+.journal-date-row button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 14px;font-size:14px;font-family:inherit;cursor:pointer;color:var(--ink);}
+.journal-list{display:flex;flex-direction:column;gap:10px;}
+.journal-item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px;cursor:pointer;}
+.journal-item:active{transform:scale(.98);}
+.journal-name{font-size:16px;font-weight:700;margin-bottom:4px;}
+.journal-rg{font-size:12px;color:var(--muted);margin-bottom:8px;}
+.journal-entries{display:flex;flex-direction:column;gap:6px;}
+.journal-entry{font-size:14px;line-height:1.5;padding:7px 10px;background:var(--bg);border-radius:8px;}
+.journal-entry-label{font-size:11px;font-weight:700;color:var(--tlb);margin-bottom:2px;}
+.journal-empty{text-align:center;color:var(--muted);padding:40px 0;font-size:14px;}
+
+/* DETAIL */
+#detailPage{display:none;padding:0;}
+.dheader{display:flex;align-items:center;gap:10px;padding:16px 14px 12px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10;}
+.dback{border:none;background:none;font-size:26px;cursor:pointer;padding:0 4px;color:var(--ink);line-height:1;}
+.dname{font-family:"Noto Serif TC",serif;font-size:20px;font-weight:700;flex:1;}
+.drg{font-size:12px;color:var(--muted);}
+.dedit{border:none;background:none;color:var(--muted);font-size:14px;cursor:pointer;text-decoration:underline;flex-shrink:0;}
+.dbody{padding:16px 14px;max-width:580px;margin:0 auto;}
+.dsec{margin-bottom:22px;}
+.dsec-title{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;}
+.drow{display:flex;gap:10px;align-items:center;margin-bottom:10px;}
+.drow label{font-size:14px;min-width:82px;color:var(--ink);}
+.drow select{flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;font-family:inherit;background:var(--card);color:var(--ink);}
+.next-contact{border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px;}
+.nc-new{background:#f3e8ff;border:1px solid #d7b8f5;color:#9b59b6;}
+.nc-overdue{background:#fde8e8;border:1px solid #f0b8b8;color:var(--red);}
+.nc-soon{background:#fef0e0;border:1px solid #f5cfa0;color:var(--warn);}
+.nc-ok{background:var(--shu-bg);border:1px solid #b2d8c4;color:var(--shu);}
+.note-input-wrap{display:flex;gap:8px;margin-bottom:8px;}
+.note-input-wrap textarea{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:var(--card);color:var(--ink);resize:none;min-height:72px;}
+.note-input-wrap button{border:none;background:var(--ink);color:#fff;border-radius:10px;padding:0 16px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;white-space:nowrap;}
+.note-date-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.note-date-row label{font-size:13px;color:var(--muted);white-space:nowrap;}
+.note-date-row input[type=date]{flex:1;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px;font-family:inherit;background:var(--card);color:var(--ink);}
+.notes-list{display:flex;flex-direction:column;gap:8px;}
+.note-item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 13px;}
+.note-date{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.note-text{font-size:14px;line-height:1.6;}
+.note-del{float:right;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;}
+.no-notes{color:var(--muted);font-size:14px;text-align:center;padding:16px 0;}
+
+/* 天龍八部 */
+.tl-step{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;}
+.tl-step-header{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+.tl-step-num{width:24px;height:24px;border-radius:50%;background:#f3e8ff;color:var(--tlb);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.tl-step-name{flex:1;font-size:15px;font-weight:500;}
+.tl-step-count{font-size:12px;color:var(--tlb);font-weight:700;margin-right:4px;}
+.tl-add-btn{border:1px solid var(--tlb);background:none;color:var(--tlb);border-radius:99px;padding:4px 12px;font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;}
+.tl-entries{padding:0 14px 12px;display:flex;flex-direction:column;gap:6px;}
+.tl-entry{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:8px;padding:7px 10px;}
+.tl-entry-date{font-size:13px;color:var(--muted);flex:1;}
+.tl-entry-del{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;}
+.tl-add-row{padding:0 14px 12px;display:flex;gap:8px;align-items:center;}
+.tl-add-row input[type=date]{flex:1;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px;font-family:inherit;background:var(--card);color:var(--ink);}
+.tl-add-row button{border:none;background:var(--tlb);color:#fff;border-radius:10px;padding:8px 14px;font-size:14px;font-family:inherit;cursor:pointer;}
+
+/* ADD/EDIT PAGE */
+#addPage{display:none;padding:0;}
+.aheader{display:flex;align-items:center;gap:10px;padding:16px 14px 12px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10;}
+.aback{border:none;background:none;font-size:26px;cursor:pointer;padding:0 4px;color:var(--ink);line-height:1;}
+.aheader-title{font-family:"Noto Serif TC",serif;font-size:20px;font-weight:700;flex:1;}
+.abody{padding:16px 14px;max-width:580px;margin:0 auto;}
+.arow{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.arow label{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;}
+.arow input,.arow select{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:15px;font-family:inherit;background:var(--card);color:var(--ink);}
+.abtn{width:100%;border:none;background:var(--ink);color:#fff;border-radius:12px;padding:15px;font-size:16px;font-weight:500;font-family:inherit;cursor:pointer;margin-top:8px;}
+.adel{width:100%;border:1px solid var(--red);background:none;color:var(--red);border-radius:12px;padding:14px;font-size:15px;font-weight:500;font-family:inherit;cursor:pointer;margin-top:10px;}
+
+/* CALENDAR */
+.cal-section{background:#f0f7ff;border:1px solid #bdd6f5;border-radius:12px;padding:14px;margin-bottom:10px;}
+.cal-section-title{font-size:12px;font-weight:700;color:var(--call);letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.cal-row{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+.cal-row label{font-size:13px;color:var(--ink);}
+.cal-row input,.cal-row textarea{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;background:var(--card);color:var(--ink);}
+.cal-row textarea{resize:none;min-height:50px;}
+.cal-btn{width:100%;border:none;background:var(--call);color:#fff;border-radius:10px;padding:11px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;margin-top:4px;}
+.cal-btn:disabled{background:#aaa;cursor:not-allowed;}
+.cal-status{font-size:13px;margin-top:8px;padding:8px 10px;border-radius:8px;display:none;}
+.cal-status.ok{background:#e3f1ea;color:var(--done);display:block;}
+.cal-status.err{background:#fde8e8;color:var(--red);display:block;}
+.gcal-setup{font-size:12px;color:var(--call);text-decoration:underline;cursor:pointer;border:none;background:none;font-family:inherit;margin-top:6px;}
+
+.today-btn{width:100%;border:1px solid var(--call);background:none;color:var(--call);border-radius:12px;padding:13px;font-size:15px;font-weight:500;font-family:inherit;cursor:pointer;margin-bottom:10px;}
+.today-btn.active{background:var(--call);color:#fff;}
+.pb-today{background:#e4ecf4;color:var(--call);}
+.site-switch{position:fixed;top:12px;right:12px;z-index:1000;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 12px;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.08);}
+.site-switch:active{transform:scale(.97);}
+
+/* Desktop presentation polish from the styled standalone mockup */
+button,.prow,.journal-item,.tl-step,.note-item,.fbtn,.tab,.site-switch{transition:transform .12s ease,box-shadow .12s ease,background-color .12s ease,border-color .12s ease;}
+.setup-box,.prow,.journal-item,.tl-step,.note-item,.cal-section{box-shadow:0 6px 20px rgba(44,42,38,.08);}
+.prow:hover,.journal-item:hover,.tl-step:hover,.note-item:hover{box-shadow:0 8px 24px rgba(44,42,38,.12);}
+.fbtn:hover,.journal-date-row button:hover,.site-switch:hover{box-shadow:0 4px 14px rgba(44,42,38,.10);}
+input,select,textarea,button{outline-color:var(--ink);}
+
+@media (min-width:700px){
+  body{background:#d9d4c8;padding:24px 0 96px;min-height:100vh;}
+  #setupPage,#loadingPage,#listPage,#detailPage,#addPage{
+    width:390px;
+    max-width:calc(100vw - 32px);
+    min-height:760px;
+    max-height:calc(100vh - 48px);
+    margin:0 auto;
+    background:var(--bg);
+    border:1px solid rgba(0,0,0,.06);
+    border-radius:34px;
+    box-shadow:0 12px 40px rgba(44,42,38,.28);
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+  #setupPage,#loadingPage{align-items:center;justify-content:center;}
+  #listPage{padding:24px 14px 96px;}
+  .wrap,.dbody,.abody{max-width:100%;}
+  .dheader,.aheader{border-radius:34px 34px 0 0;}
+  .fab{right:calc(50% - 195px + 20px);bottom:44px;}
+  .site-switch{top:36px;right:calc(50% - 195px + 14px);}
+}
+
+@media (max-width:699px){
+  .site-switch{top:10px;right:10px;}
+}
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head><body>
+<a class="site-switch" href="./helpme/index.html" aria-label="Open Helpme page">Helpme</a>
+
+<div id="setupPage">
+<div class="setup-box">
+  <h2>設定 GitHub 同步</h2>
+  <p>輸入你的 GitHub Token，讓手機和電腦的資料可以同步。Token 只存在你的裝置上。</p>
+  <input id="tokenInput" type="password" placeholder="貼上 ghp_ 開頭的 token">
+  <button id="tokenBtn">確認並開始</button>
+  <div class="setup-err" id="setupErr"></div>
+</div>
+</div>
+
+<div id="loadingPage"><p>載入資料中...</p></div>
+
+<div id="listPage">
+<div class="wrap">
+<h1>客戶名單</h1>
+<div class="sub"><span class="sync-status" id="syncStatus"></span></div>
+<div class="tab-bar">
+  <button class="tab active" data-tab="roster">名單</button>
+  <button class="tab" data-tab="journal">聯絡日誌</button>
+</div>
+
+<div id="rosterSection">
+<div class="regionbar"><select id="region"></select></div>
+<div class="searchbar"><input id="searchInput" type="search" placeholder="搜尋名字..."></div>
+<div class="filter-group">
+  <div class="filter-label">聯絡提醒</div>
+  <div class="filters">
+    <button class="fbtn f-new" data-f="isnew">未聯絡過</button>
+    <button class="fbtn f-overdue" data-f="overdue">🔴 該聯絡了</button>
+    <button class="fbtn f-soon" data-f="soon">🟡 快到了</button>
+  </div>
+</div>
+<div class="filter-group" style="margin-top:10px;">
+  <div class="filter-label">其他篩選</div>
+  <div class="filters">
+    <button class="fbtn active" data-f="all">全部</button>
+    <button class="fbtn f-today" data-f="today">📋 今日清單</button>
+    <button class="fbtn" data-f="empty">未整理</button>
+    <button class="fbtn" data-f="shu">熟</button>
+    <button class="fbtn" data-f="pu">普通</button>
+    <button class="fbtn" data-f="bushu">不熟</button>
+    <button class="fbtn" data-f="know">知道保險</button>
+    <button class="fbtn" data-f="unknow">不知道保險</button>
+    <button class="fbtn" data-f="calling">聯絡中</button>
+    <button class="fbtn" data-f="tldone">天龍完成</button>
+  </div>
+</div>
+<div class="plist" id="plist"></div>
+
+</div>
+
+<div id="journalSection" style="display:none;">
+  <div class="journal-date-row">
+    <input type="date" id="journalDate">
+    <button id="journalPrev">‹</button>
+    <button id="journalNext">›</button>
+  </div>
+  <div class="journal-list" id="journalList"></div>
+</div>
+
+</div>
+</div>
+
+<div id="detailPage">
+<div class="dheader">
+  <button class="dback" id="backBtn">‹</button>
+  <div style="flex:1;min-width:0;"><div class="dname" id="dname"></div><div class="drg" id="drg"></div></div>
+  <button class="dedit" id="editBtn">編輯</button>
+</div>
+<div class="dbody">
+<div id="nextContactBanner"></div>
+<button class="today-btn" id="todayBtn">📋 加入今日清單</button>
+<div class="dsec">
+<div class="dsec-title">分類</div>
+<div class="drow"><label>熟不熟</label>
+<select id="dShu"><option value="0">未分類</option><option value="1">熟</option><option value="2">普通</option><option value="3">不熟</option></select></div>
+<div class="drow"><label>知道保險</label>
+<select id="dKnow"><option value="0">未設定</option><option value="1">知道</option><option value="2">不知道</option><option value="3">不清楚</option></select></div>
+<div class="drow"><label>提醒間隔</label><select id="dRemind"></select></div>
+</div>
+
+<div class="dsec">
+<div class="dsec-title">天龍八部</div>
+<div id="tlSteps"></div>
+</div>
+
+<div class="dsec" id="calSection">
+<div class="dsec-title">📅 新增到 Google 行事曆</div>
+<div id="calContent">
+  <div class="cal-section">
+    <div class="cal-section-title">📌 約見面</div>
+    <div class="cal-row"><label>日期</label><input type="date" id="calMeetDate"></div>
+    <div class="cal-row"><label>時間</label><input type="time" id="calMeetTime" value="10:00"></div>
+    <div class="cal-row"><label>備註</label><textarea id="calMeetNote" placeholder="見面地點或備註..."></textarea></div>
+    <button class="cal-btn" id="calMeetBtn" onclick="addCalEvent('meet')">新增見面行程</button>
+    <div class="cal-status" id="calMeetStatus"></div>
+  </div>
+  <div class="cal-section">
+    <div class="cal-section-title">🔔 聯絡提醒</div>
+    <div class="cal-row"><label>提醒日期</label><input type="date" id="calRemindDate"></div>
+    <div class="cal-row"><label>提醒時間</label><input type="time" id="calRemindTime" value="09:00"></div>
+    <div class="cal-row"><label>備註</label><textarea id="calRemindNote" placeholder="提醒內容..."></textarea></div>
+    <button class="cal-btn" id="calRemindBtn" onclick="addCalEvent('remind')">新增聯絡提醒</button>
+    <div class="cal-status" id="calRemindStatus"></div>
+  </div>
+  <div style="text-align:center;margin-top:4px;">
+    <button class="gcal-setup" id="gcalSetupBtn">⚙️ 設定 Google Client ID</button>
+  </div>
+</div>
+</div>
+
+<div class="dsec">
+<div class="dsec-title">聯絡紀錄</div>
+<div class="note-input-wrap">
+<textarea id="noteInput" placeholder="輸入這次聯絡的狀況..."></textarea>
+<button id="noteAddBtn">記錄</button>
+</div>
+<div class="note-date-row"><label>聯絡日期</label><input type="date" id="noteDate"></div>
+<div class="notes-list" id="notesList"></div>
+</div>
+</div>
+</div>
+
+<div id="addPage">
+<div class="aheader">
+  <button class="aback" id="addBack">‹</button>
+  <div class="aheader-title" id="addPageTitle">新增聯絡人</div>
+</div>
+<div class="abody">
+  <div class="arow"><label>姓名</label><input id="aName" type="text" placeholder="輸入姓名"></div>
+  <div class="arow"><label>地區</label><select id="aRegion"></select></div>
+  <div class="arow"><label>熟不熟</label>
+  <select id="aShu"><option value="0">未分類</option><option value="1">熟</option><option value="2">普通</option><option value="3">不熟</option></select></div>
+  <div class="arow"><label>知道保險</label>
+  <select id="aKnow"><option value="0">未設定</option><option value="1">知道</option><option value="2">不知道</option><option value="3">不清楚</option></select></div>
+  <div class="arow"><label>提醒間隔</label><select id="aRemind"></select></div>
+  <button class="abtn" id="aSaveBtn">儲存</button>
+  <button class="adel" id="aDelBtn" style="display:none;">刪除這個人</button>
+</div>
+</div>
+
+<button class="fab" id="fabBtn">＋</button>
+
+<script>
+const GITHUB_USER='ankenli',GITHUB_REPO='anken',DATA_FILE='roster-data.json';
+const API_URL='https://api.github.com/repos/'+GITHUB_USER+'/'+GITHUB_REPO+'/contents/'+DATA_FILE;
+const DEFAULT_REMIND=30,SOON_DAYS=7;
+const TL_STEPS=['夢想說100次','好做','好賣','好賺','出國','安心','介紹獎金','期限'];
+const SEED=[{"n": "美秀阿姨", "r": "台南"}, {"n": "rain", "r": "台南"}, {"n": "黃靖雅", "r": "台南"}, {"n": "阮靖鈞", "r": "台南"}, {"n": "柏豪", "r": "台南"}, {"n": "橘子", "r": "台南"}, {"n": "柯靜樺", "r": "台南"}, {"n": "chun", "r": "台南"}, {"n": "許雅甄", "r": "台南"}, {"n": "毛品秀", "r": "台南"}, {"n": "伍思丞", "r": "台南"}, {"n": "蔓蔓", "r": "台南"}, {"n": "錢姊", "r": "台南"}, {"n": "黃站長", "r": "台南"}, {"n": "黃國棟", "r": "台南"}, {"n": "柳丁", "r": "台南"}, {"n": "孟庭", "r": "台南"}, {"n": "春生雞肉 洪小姐", "r": "台南"}, {"n": "小豬", "r": "台南"}, {"n": "炳南", "r": "台南"}, {"n": "andy", "r": "台南"}, {"n": "漢城", "r": "台南"}, {"n": "陳清良", "r": "台南"}, {"n": "Ann", "r": "台南"}, {"n": "K特姊", "r": "台南"}, {"n": "RAX", "r": "台南"}, {"n": "小魚", "r": "台南"}, {"n": "蔡玉華", "r": "台南"}, {"n": "憨吉", "r": "台南"}, {"n": "喬安", "r": "台南"}, {"n": "哥哥", "r": "台南"}, {"n": "威", "r": "台南"}, {"n": "學妹阿姨", "r": "台南"}, {"n": "敏安", "r": "台南"}, {"n": "徐仕峰", "r": "台南"}, {"n": "阿刀", "r": "台南"}, {"n": "林冠翰", "r": "台南"}, {"n": "WOLF", "r": "台南"}, {"n": "王彥翔", "r": "台南"}, {"n": "士洋", "r": "台南"}, {"n": "何清勳叔叔", "r": "台南"}, {"n": "蛋頭", "r": "台南"}, {"n": "娃娃", "r": "台南"}, {"n": "有雞廚房 高彤", "r": "台南"}, {"n": "房東 蔡先生", "r": "台南"}, {"n": "李羿璇", "r": "台南"}, {"n": "林映庭", "r": "台南"}, {"n": "蔡漢城", "r": "台南"}, {"n": "郭建成", "r": "台南"}, {"n": "陳麗君", "r": "台南"}, {"n": "尼克", "r": "台南"}, {"n": "sophia", "r": "台南"}, {"n": "陳翊嘉", "r": "高雄"}, {"n": "董伊珊", "r": "高雄"}, {"n": "貴全", "r": "高雄"}, {"n": "黃董", "r": "高雄"}, {"n": "大鹿", "r": "高雄"}, {"n": "娟姊", "r": "高雄"}, {"n": "楊董", "r": "高雄"}, {"n": "陳董", "r": "高雄"}, {"n": "蘇董", "r": "高雄"}, {"n": "縉哥哥", "r": "高雄"}, {"n": "丞丞老闆", "r": "高雄"}, {"n": "陣雨", "r": "高雄"}, {"n": "博智", "r": "高雄"}, {"n": "冠翔", "r": "高雄"}, {"n": "張老師", "r": "高雄"}, {"n": "KAI", "r": "高雄"}, {"n": "婉容", "r": "高雄"}, {"n": "淳閔", "r": "高雄"}, {"n": "多利", "r": "高雄"}, {"n": "毛哥", "r": "高雄"}, {"n": "葵瓜子", "r": "高雄"}, {"n": "小紅帽", "r": "高雄"}, {"n": "阿倫", "r": "高雄"}, {"n": "阿里", "r": "高雄"}, {"n": "家0", "r": "高雄"}, {"n": "雅弘", "r": "高雄"}, {"n": "洧誠", "r": "高雄"}, {"n": "淑君姊", "r": "高雄"}, {"n": "彬仔", "r": "高雄"}, {"n": "思潔", "r": "高雄"}, {"n": "恩萱", "r": "高雄"}, {"n": "吳亭玉", "r": "高雄"}, {"n": "max", "r": "高雄"}, {"n": "范亦偉", "r": "高雄"}, {"n": "LEO", "r": "高雄"}, {"n": "小豪老師", "r": "高雄"}, {"n": "柚子", "r": "高雄"}, {"n": "熊爺", "r": "高雄"}, {"n": "宛蓉", "r": "高雄"}, {"n": "承諺哥", "r": "高雄"}, {"n": "林允樂", "r": "高雄"}, {"n": "林柏辰", "r": "高雄"}, {"n": "林鎂如", "r": "高雄"}, {"n": "樂樂", "r": "高雄"}, {"n": "大毛", "r": "高雄"}, {"n": "佩昀", "r": "高雄"}, {"n": "老莊", "r": "高雄"}, {"n": "菲力", "r": "高雄"}, {"n": "小芷", "r": "高雄"}, {"n": "蔡芳芳", "r": "高雄"}, {"n": "許耀文", "r": "高雄"}, {"n": "豆花", "r": "高雄"}, {"n": "鄭詠仁", "r": "高雄"}, {"n": "阿綸", "r": "高雄"}, {"n": "高小萱", "r": "高雄"}, {"n": "一鋒", "r": "高雄"}, {"n": "信志", "r": "高雄"}, {"n": "晏榮", "r": "高雄"}, {"n": "偉迪", "r": "高雄"}, {"n": "德安", "r": "高雄"}, {"n": "阿桐", "r": "高雄"}, {"n": "小歐", "r": "高雄"}, {"n": "江瑞洲", "r": "高雄"}, {"n": "洪晨祐", "r": "高雄"}, {"n": "裕文", "r": "高雄"}, {"n": "冠凱", "r": "高雄"}, {"n": "席平", "r": "高雄"}, {"n": "希 高群", "r": "高雄"}, {"n": "黃于珊", "r": "高雄"}, {"n": "張思綸", "r": "高雄"}, {"n": "阿力老師", "r": "高雄"}, {"n": "貞姊", "r": "高雄"}, {"n": "翎姊", "r": "高雄"}, {"n": "陳昱", "r": "高雄"}, {"n": "預期大大", "r": "高雄"}, {"n": "adil姊", "r": "高雄"}, {"n": "靚元", "r": "高雄"}, {"n": "志林", "r": "高雄"}, {"n": "多多姊", "r": "高雄"}, {"n": "郭俊宏", "r": "嘉義"}, {"n": "陳羿瑄", "r": "嘉義"}, {"n": "吳叔容", "r": "嘉義"}, {"n": "林沂蓁", "r": "嘉義"}, {"n": "法蘭", "r": "嘉義"}, {"n": "廖粽子", "r": "嘉義"}, {"n": "鍾老師", "r": "嘉義"}, {"n": "施宜辰", "r": "嘉義"}, {"n": "昌昌哥", "r": "嘉義"}, {"n": "景藤", "r": "嘉義"}, {"n": "文亦榮", "r": "嘉義"}, {"n": "京華", "r": "嘉義"}, {"n": "惠文阿姨", "r": "嘉義"}, {"n": "婉琪", "r": "嘉義"}, {"n": "MIKE葛", "r": "嘉義"}, {"n": "淳閔媽", "r": "嘉義"}, {"n": "若珺", "r": "嘉義"}, {"n": "義展", "r": "嘉義"}, {"n": "小尤學長", "r": "嘉義"}, {"n": "何婉居", "r": "嘉義"}, {"n": "和教練", "r": "嘉義"}, {"n": "佳倫", "r": "嘉義"}, {"n": "劉俊毅", "r": "嘉義"}, {"n": "動力老闆", "r": "嘉義"}, {"n": "阿飛", "r": "嘉義"}, {"n": "達哥", "r": "嘉義"}, {"n": "企鵝", "r": "嘉義"}, {"n": "man哥", "r": "嘉義"}, {"n": "何清俊叔叔", "r": "嘉義"}, {"n": "許清玥", "r": "嘉義"}, {"n": "舅舅", "r": "嘉義"}, {"n": "文蘭阿姨", "r": "嘉義"}, {"n": "永舜", "r": "嘉義"}, {"n": "偉臣", "r": "嘉義"}, {"n": "王資姚", "r": "嘉義"}, {"n": "翅膀", "r": "嘉義"}, {"n": "茶樹", "r": "嘉義"}, {"n": "黃逸庭", "r": "嘉義"}, {"n": "傭安", "r": "嘉義"}, {"n": "李敏庭", "r": "嘉義"}, {"n": "劉禹任", "r": "嘉義"}, {"n": "家非", "r": "嘉義"}, {"n": "許員睿", "r": "嘉義"}, {"n": "李育峻", "r": "嘉義"}, {"n": "呂元潤", "r": "嘉義"}, {"n": "林于臻", "r": "嘉義"}, {"n": "阿瑋哥", "r": "嘉義"}, {"n": "超人", "r": "嘉義"}, {"n": "官芷瑄", "r": "嘉義"}, {"n": "小魚", "r": "嘉義"}, {"n": "林義展", "r": "嘉義"}, {"n": "方見昊", "r": "嘉義"}, {"n": "憲憲哥哥", "r": "嘉義"}, {"n": "遠遠哥哥", "r": "嘉義"}, {"n": "曾裕達", "r": "嘉義"}, {"n": "嘉穎哥哥", "r": "嘉義"}, {"n": "羿瑄媽", "r": "嘉義"}, {"n": "小玉", "r": "嘉義"}, {"n": "蔡杰翰", "r": "嘉義"}, {"n": "賴妍妍", "r": "嘉義"}, {"n": "高橋", "r": "嘉義"}, {"n": "黃翊婷", "r": "嘉義"}, {"n": "鏞安", "r": "嘉義"}, {"n": "皓呆", "r": "嘉義"}, {"n": "macy", "r": "嘉義"}, {"n": "蕭玉璇", "r": "嘉義"}, {"n": "軒兒", "r": "台中"}, {"n": "白淑鵑", "r": "台中"}, {"n": "黃義明", "r": "台中"}, {"n": "趙冠豪", "r": "台中"}, {"n": "張正昀", "r": "台中"}, {"n": "多多", "r": "台中"}, {"n": "浩晏", "r": "台中"}, {"n": "重穎", "r": "台中"}, {"n": "士棠", "r": "台中"}, {"n": "柏辰", "r": "台中"}, {"n": "柏羲", "r": "台中"}, {"n": "玉", "r": "台中"}, {"n": "代筆", "r": "台中"}, {"n": "方葛", "r": "台中"}, {"n": "徐妹", "r": "台中"}, {"n": "幸暖", "r": "台中"}, {"n": "易廷翰", "r": "台中"}, {"n": "皓呆學長", "r": "台中"}, {"n": "小穎", "r": "台中"}, {"n": "俊翔(鯉魚)", "r": "台中"}, {"n": "頌佑", "r": "台中"}, {"n": "曾彥凱", "r": "台中"}, {"n": "羅克偉", "r": "台中"}, {"n": "冠豪", "r": "台中"}, {"n": "于方", "r": "台中"}, {"n": "莊教授", "r": "台中"}, {"n": "珍珍(EVA)", "r": "台中"}, {"n": "黑熊", "r": "台中"}, {"n": "JACK", "r": "台中"}, {"n": "NEIL", "r": "台中"}, {"n": "強森", "r": "台中"}, {"n": "郭老師", "r": "台中"}, {"n": "肉多多", "r": "台中"}, {"n": "丞哲", "r": "台中"}, {"n": "萱", "r": "台中"}, {"n": "黃霆軒", "r": "台中"}, {"n": "ㄈㄤ", "r": "台中"}, {"n": "游惠文", "r": "台中"}, {"n": "張智成", "r": "台中"}, {"n": "懿德", "r": "台中"}, {"n": "mico", "r": "台中"}, {"n": "WAWA", "r": "台中"}, {"n": "重影", "r": "台中"}, {"n": "佳宇", "r": "台中"}, {"n": "信翰", "r": "台中"}, {"n": "吳幸暖", "r": "台中"}, {"n": "周佳虹", "r": "台中"}, {"n": "哈姬米籃", "r": "台中"}, {"n": "江弈臻", "r": "台中"}, {"n": "莊智勳", "r": "台中"}, {"n": "小影", "r": "台中"}, {"n": "張頌祐", "r": "台中"}, {"n": "江雅軒", "r": "台中"}, {"n": "李清旭", "r": "台中"}, {"n": "游博淵", "r": "台中"}, {"n": "奇奇", "r": "台中"}, {"n": "阿淵哥", "r": "台中"}, {"n": "格郡", "r": "台中"}, {"n": "邱顯榮", "r": "台北"}, {"n": "吳昱甄", "r": "台北"}, {"n": "馬漢", "r": "台北"}, {"n": "coco", "r": "台北"}, {"n": "大眼載", "r": "台北"}, {"n": "E妹", "r": "台北"}, {"n": "廖書群", "r": "台北"}, {"n": "阿姨", "r": "台北"}, {"n": "寧姊", "r": "台北"}, {"n": "Jacky", "r": "台北"}, {"n": "九哥", "r": "台北"}, {"n": "凱玉", "r": "台北"}, {"n": "路易姊", "r": "台北"}, {"n": "博懷", "r": "台北"}, {"n": "咚咚", "r": "台北"}, {"n": "小寒", "r": "台北"}, {"n": "KINA", "r": "台北"}, {"n": "MINA", "r": "台北"}, {"n": "Molly", "r": "台北"}, {"n": "寧媽", "r": "台北"}, {"n": "文傑", "r": "台北"}, {"n": "蕭琪榮", "r": "台北"}, {"n": "賴玉珍", "r": "台北"}, {"n": "sammi", "r": "台北"}, {"n": "eating lee", "r": "台北"}, {"n": "彥錡", "r": "台北"}, {"n": "楊婷涵", "r": "台北"}, {"n": "張君瑞", "r": "台北"}, {"n": "怡慧", "r": "台北"}, {"n": "林俞穎", "r": "台北"}, {"n": "林宛靜", "r": "台北"}, {"n": "雪人", "r": "台北"}, {"n": "王偉臣", "r": "台北"}, {"n": "jacky", "r": "台北"}, {"n": "郭美琪", "r": "台北"}, {"n": "謝景丞", "r": "台北"}, {"n": "吉米他姊", "r": "台北"}, {"n": "鄭禮廷", "r": "台北"}, {"n": "小美", "r": "台北"}, {"n": "mina", "r": "台北"}, {"n": "鄧棠心", "r": "台北"}, {"n": "文婕", "r": "台北"}, {"n": "阿美", "r": "新竹"}, {"n": "SAM", "r": "新竹"}, {"n": "翼德", "r": "新竹"}, {"n": "麒睿", "r": "新竹"}, {"n": "宣翰", "r": "新竹"}, {"n": "林子傑", "r": "新竹"}, {"n": "大翔", "r": "新竹"}, {"n": "羅倫", "r": "新竹"}, {"n": "謝明峰", "r": "新竹"}, {"n": "邱暐峻", "r": "新竹"}, {"n": "秉豐", "r": "新竹"}, {"n": "黃柏叡", "r": "新竹"}, {"n": "CH", "r": "新竹"}, {"n": "bory", "r": "新竹"}, {"n": "jeffrey", "r": "新竹"}, {"n": "保羅", "r": "新竹"}, {"n": "roger", "r": "新竹"}, {"n": "shaoting", "r": "新竹"}, {"n": "vicky", "r": "新竹"}, {"n": "wan", "r": "新竹"}, {"n": "yellow", "r": "新竹"}, {"n": "YU", "r": "新竹"}, {"n": "廖祐辰", "r": "屏東"}, {"n": "黃畹婷", "r": "屏東"}, {"n": "陳大哥", "r": "屏東"}, {"n": "王柏崴", "r": "屏東"}, {"n": "書偉", "r": "屏東"}, {"n": "林讚良", "r": "屏東"}, {"n": "王順隆", "r": "屏東"}, {"n": "10.0", "r": "屏東"}, {"n": "羿婕", "r": "屏東"}, {"n": "品chen", "r": "屏東"}, {"n": "sun", "r": "屏東"}, {"n": "善名", "r": "桃園"}, {"n": "唐胖胖", "r": "桃園"}, {"n": "機掰學妹", "r": "桃園"}, {"n": "徐智吉", "r": "桃園"}, {"n": "李紹田", "r": "桃園"}, {"n": "小志", "r": "桃園"}, {"n": "郭芮岑", "r": "桃園"}, {"n": "小鋒", "r": "桃園"}, {"n": "vivian", "r": "桃園"}, {"n": "家祐哥", "r": "雲林"}, {"n": "林子恆", "r": "雲林"}, {"n": "陳柏豪", "r": "雲林"}, {"n": "YUMI", "r": "雲林"}, {"n": "喜姊", "r": "花蓮"}, {"n": "小米", "r": "台東"}, {"n": "周映瑤", "r": "未知"}, {"n": "林家宇", "r": "未知"}, {"n": "張益全", "r": "未知"}, {"n": "李念蓁", "r": "未知"}, {"n": "林姿華", "r": "未知"}, {"n": "楊煌彬", "r": "未知"}, {"n": "禹宣", "r": "未知"}, {"n": "脩", "r": "未知"}, {"n": "張志誠", "r": "未知"}, {"n": "秀芳", "r": "未知"}, {"n": "韓旭東", "r": "未知"}, {"n": "亦飯", "r": "未知"}, {"n": "湘婷", "r": "未知"}, {"n": "廖晉瑋", "r": "未知"}, {"n": "SAKI", "r": "未知"}, {"n": "游雪莉", "r": "未知"}, {"n": "U7", "r": "未知"}];
+const REGIONS=["台南", "高雄", "嘉義", "台中", "台北", "新竹", "屏東", "桃園", "雲林", "花蓮", "台東", "未知"];
+const ALL_REGIONS=["台北","新北","桃園","新竹","苗栗","台中","彰化","南投","雲林","嘉義","台南","高雄","屏東","宜蘭","花蓮","台東","基隆","澎湖","金門","馬祖","未知"];
+let roster=[],vFilter='all',regionFilter='全部',currentId=null,editingId=null,fileSha=null,searchQuery='';
+let ghToken=localStorage.getItem('gh_token')||'';
+let saveTimer=null;
+
+const PAGES=['setupPage','loadingPage','listPage','detailPage','addPage'];
+function show(id){
+  PAGES.forEach(p=>{const el=document.getElementById(p);if(el)el.style.display=p===id?(p==='loadingPage'?'flex':'block'):'none';});
+  const fab=document.getElementById('fabBtn');if(fab)fab.style.display=(id==='listPage')?'flex':'none';
+}
+
+function seed(){return SEED.map((d,i)=>({id:'p'+i,name:d.n,region:d.r,shu:0,know:0,remind:DEFAULT_REMIND,notes:[],tlLog:[]}));}
+
+function migrate(p){
+  if(!p.notes)p.notes=[];
+  if(!p.remind)p.remind=DEFAULT_REMIND;
+  if(!p.tlLog)p.tlLog=[];
+  if(p.today===undefined)p.today=false;
+  return p;
+}
+
+function buildRemindSelect(sel,val){
+  sel.innerHTML='';
+  for(let i=1;i<=30;i++){const o=document.createElement('option');o.value=i;o.textContent=i+' 天';sel.appendChild(o);}
+  sel.value=val||DEFAULT_REMIND;
+}
+function buildRegionSelect(sel,val){
+  sel.innerHTML='';
+  ALL_REGIONS.forEach(rg=>{const o=document.createElement('option');o.value=rg;o.textContent=rg;sel.appendChild(o);});
+  if(val)sel.value=val;
+  else sel.value=ALL_REGIONS[0];
+}
+
+function today(){const d=new Date();return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');}
+function todayISO(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0')+'-'+d.getDate().toString().padStart(2,'0');}
+function parseLocalDate(str){const p=str.replace(/\//g,'-').split('-');return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));}
+
+function lastContactDate(p){
+  if(!p.notes||!p.notes.length)return null;
+  const dates=p.notes.map(n=>parseLocalDate(n.date)).filter(d=>!isNaN(d));
+  return dates.length?new Date(Math.max(...dates)):null;
+}
+function contactStatus(p){
+  const remind=p.remind||DEFAULT_REMIND;
+  const last=lastContactDate(p);
+  if(!last)return 'isnew';
+  const diff=Math.floor((new Date()-last)/86400000);
+  if(diff>=remind)return 'overdue';
+  if(diff>=remind-SOON_DAYS)return 'soon';
+  return 'ok';
+}
+function daysUntilNext(p){
+  const remind=p.remind||DEFAULT_REMIND;
+  const last=lastContactDate(p);
+  if(!last)return null;
+  return remind-Math.floor((new Date()-last)/86400000);
+}
+function tlUnique(p){
+  if(!p.tlLog||!p.tlLog.length)return 0;
+  return new Set(p.tlLog.map(e=>e.step)).size;
+}
+
+async function ghGet(){
+  const res=await fetch(API_URL,{headers:{Authorization:'token '+ghToken,Accept:'application/vnd.github.v3+json'}});
+  if(res.status===404)return null;if(!res.ok)throw new Error('讀取失敗');
+  const data=await res.json();fileSha=data.sha;
+  return JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,'')))));
+}
+async function ghPut(r){
+  const content=btoa(unescape(encodeURIComponent(JSON.stringify(r))));
+  const body={message:'update',content};if(fileSha)body.sha=fileSha;
+  const res=await fetch(API_URL,{method:'PUT',headers:{Authorization:'token '+ghToken,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!res.ok)throw new Error('儲存失敗');
+  const d=await res.json();if(d.content)fileSha=d.content.sha;
+}
+function setSyncStatus(s,m){const el=document.getElementById('syncStatus');if(!el)return;el.textContent=m;el.className='sync-status '+(s==='ok'?'sync-ok':s==='ing'?'sync-ing':'sync-err');}
+function scheduleSave(){clearTimeout(saveTimer);setSyncStatus('ing','同步中...');saveTimer=setTimeout(async()=>{try{await ghPut(roster);setSyncStatus('ok','已同步');}catch(e){setSyncStatus('err','同步失敗');}},2000);}
+
+document.getElementById('tokenBtn').onclick=async()=>{
+  const t=document.getElementById('tokenInput').value.trim();
+  const err=document.getElementById('setupErr');
+  if(!t.startsWith('ghp_')){err.textContent='請輸入 ghp_ 開頭的 token';err.style.display='block';return;}
+  err.style.display='none';ghToken=t;localStorage.setItem('gh_token',t);await startApp();
+};
+
+async function startApp(){
+  show('loadingPage');
+  try{
+    const remote=await ghGet();
+    if(remote){roster=remote.map(migrate);}
+    else{roster=seed();await ghPut(roster);}
+    initRegion();renderList();
+    const nd=document.getElementById('journalDate');if(nd&&!nd.value)nd.value=todayISO();
+    show('listPage');setSyncStatus('ok','已同步');
+  }catch(e){
+    show('setupPage');
+    document.getElementById('setupErr').textContent='Token 有誤或網路問題';
+    document.getElementById('setupErr').style.display='block';
+  }
+}
+
+function initRegion(){
+  const sel=document.getElementById('region');const prev=regionFilter;sel.innerHTML='';
+  const all=document.createElement('option');all.value='全部';all.textContent='全部地區 ('+roster.length+')';sel.appendChild(all);
+  // derive regions from actual roster data
+  const actualRegions=[...new Set(roster.map(p=>p.region).filter(Boolean))];
+  // sort by ALL_REGIONS order
+  actualRegions.sort((a,b)=>{const ai=ALL_REGIONS.indexOf(a),bi=ALL_REGIONS.indexOf(b);return (ai===-1?99:ai)-(bi===-1?99:bi);});
+  actualRegions.forEach(rg=>{const n=roster.filter(p=>p.region===rg).length;const o=document.createElement('option');o.value=rg;o.textContent=rg+' ('+n+')';sel.appendChild(o);});
+  sel.value=prev;regionFilter=sel.value||'全部';
+  sel.onchange=()=>{regionFilter=sel.value;renderList();};
+}
+
+function scope(){return roster.filter(p=>regionFilter==='全部'||p.region===regionFilter);}
+function matchFilter(p){
+  const cs=contactStatus(p);
+  switch(vFilter){
+    case'isnew':return cs==='isnew';case'overdue':return cs==='overdue';case'soon':return cs==='soon';
+    case'today':return p.today===true;
+    case'empty':return p.shu===0&&p.know===0;
+    case'shu':return p.shu===1;case'pu':return p.shu===2;case'bushu':return p.shu===3;
+    case'know':return p.know===1;case'unknow':return p.know===2;
+    case'calling':return p.notes&&p.notes.length>0;
+    case'tldone':return tlUnique(p)>=TL_STEPS.length;
+    default:return true;
+  }
+}
+
+function shuBadge(p){const a=[['pb-none','未分類'],['pb-shu','熟'],['pb-pu','普通'],['pb-bz','不熟']];const[c,t]=a[p.shu];return '<span class="pbadge '+c+'">'+t+'</span>';}
+function knowBadge(p){if(p.know===1)return '<span class="pbadge pb-know">知道保險</span>';if(p.know===2)return '<span class="pbadge pb-unknow">不知道</span>';if(p.know===3)return '<span class="pbadge pb-none">不清楚</span>';return '';}
+function contactBadge(p){
+  const cs=contactStatus(p);
+  if(cs==='isnew')return '<span class="pbadge pb-new">未聯絡過</span>';
+  if(cs==='overdue')return '<span class="pbadge pb-overdue">🔴 該聯絡了</span>';
+  if(cs==='soon')return '<span class="pbadge pb-soon">🟡 '+daysUntilNext(p)+'天後</span>';
+  return '';
+}
+function todayBadge(p){
+  if(p.today)return '<span class="pbadge pb-today">📋 今日</span>';
+  return '';
+}
+function tlBadge(p){
+  const u=tlUnique(p);
+  if(u===0)return '';
+  if(u>=TL_STEPS.length)return '<span class="pbadge pb-tl">天龍完成</span>';
+  return '<span class="pbadge pb-tl">天龍 '+u+'/8</span>';
+}
+
+function updateFilterCounts(){
+  const s=scope();
+  const countMap={
+    'isnew': s.filter(p=>contactStatus(p)==='isnew').length,
+    'overdue': s.filter(p=>contactStatus(p)==='overdue').length,
+    'soon': s.filter(p=>contactStatus(p)==='soon').length,
+    'empty': s.filter(p=>p.shu===0&&p.know===0).length,
+    'shu': s.filter(p=>p.shu===1).length,
+    'pu': s.filter(p=>p.shu===2).length,
+    'bushu': s.filter(p=>p.shu===3).length,
+    'know': s.filter(p=>p.know===1).length,
+    'unknow': s.filter(p=>p.know===2).length,
+    'calling': s.filter(p=>p.notes&&p.notes.length>0).length,
+    'tldone': s.filter(p=>tlUnique(p)>=TL_STEPS.length).length,
+    'all': s.length,
+  };
+  document.querySelectorAll('.fbtn[data-f]').forEach(btn=>{
+    const f=btn.dataset.f;
+    const n=countMap[f];
+    if(n===undefined)return;
+    // strip old count
+    const base=btn.dataset.label||btn.textContent.replace(/\s*\(\d+\)$/,'').trim();
+    btn.dataset.label=base;
+    btn.textContent=base+(n>0?' ('+n+')':'');
+  });
+}
+
+function renderList(){
+  updateFilterCounts();
+  const list=document.getElementById('plist');if(!list)return;list.innerHTML='';
+  let items=scope().filter(matchFilter);
+  if(searchQuery)items=items.filter(p=>p.name.toLowerCase().includes(searchQuery));
+  if(!items.length){list.innerHTML='<div class="empty">這個分類目前沒有人</div>';return;}
+  items.forEach(p=>{
+    const cs=contactStatus(p);
+    const row=document.createElement('div');
+    row.className='prow'+(cs==='overdue'?' overdue':cs==='soon'?' soon':cs==='isnew'?' isnew':'');
+    const rg=regionFilter==='全部'?'<span class="prg">'+p.region+'</span>':'';
+    row.innerHTML='<span class="pname"></span>'+rg+'<div class="pbadges">'+todayBadge(p)+shuBadge(p)+knowBadge(p)+contactBadge(p)+tlBadge(p)+'</div><span class="arrow">›</span>';
+    row.querySelector('.pname').textContent=p.name;
+    row.onclick=()=>openDetail(p.id);
+    list.appendChild(row);
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input',e=>{searchQuery=e.target.value.trim().toLowerCase();renderList();});
+
+function renderNextContactBanner(p){
+  const banner=document.getElementById('nextContactBanner');if(!banner)return;
+  const cs=contactStatus(p);let cls,msg;
+  if(cs==='isnew'){cls='next-contact nc-new';msg='🆕 還沒聯絡過，現在可以開始！';}
+  else if(cs==='overdue'){cls='next-contact nc-overdue';msg='🔴 已超過提醒間隔，現在該聯絡了！';}
+  else if(cs==='soon'){cls='next-contact nc-soon';msg='🟡 還有 '+daysUntilNext(p)+' 天到下次聯絡時間';}
+  else{cls='next-contact nc-ok';msg='✅ 下次聯絡還有 '+daysUntilNext(p)+' 天';}
+  banner.innerHTML='<div class="'+cls+'">'+msg+'</div>';
+}
+
+function renderTLSteps(p){
+  const container=document.getElementById('tlSteps');if(!container)return;
+  container.innerHTML='';
+  TL_STEPS.forEach((name,si)=>{
+    const entries=(p.tlLog||[]).filter(e=>e.step===si);
+    const box=document.createElement('div');box.className='tl-step';
+    box.innerHTML=
+      '<div class="tl-step-header">'+
+        '<div class="tl-step-num">'+(si+1)+'</div>'+
+        '<div class="tl-step-name">'+name+'</div>'+
+        (entries.length?'<span class="tl-step-count">'+entries.length+'次</span>':'')+
+        '<button class="tl-add-btn" data-si="'+si+'">＋ 新增</button>'+
+      '</div>'+
+      (entries.length?'<div class="tl-entries" id="tlE'+si+'"></div>':'')+
+      '<div class="tl-add-row" id="tlR'+si+'" style="display:none;">'+
+        '<input type="date" id="tlD'+si+'" value="'+todayISO()+'">'+
+        '<button data-confirm="'+si+'">確認</button>'+
+      '</div>';
+    container.appendChild(box);
+
+    if(entries.length){
+      const eContainer=box.querySelector('#tlE'+si);
+      entries.forEach((e,ei)=>{
+        const actualIdx=(p.tlLog||[]).findIndex((x,i)=>x.step===si&&(p.tlLog||[]).filter((y,j)=>y.step===si&&j<i).length===ei);
+        const row=document.createElement('div');row.className='tl-entry';
+        row.innerHTML='<span class="tl-entry-date">'+e.date+'</span><button class="tl-entry-del" data-idx="'+actualIdx+'">刪除</button>';
+        eContainer.appendChild(row);
+      });
+      eContainer.querySelectorAll('.tl-entry-del').forEach(btn=>{
+        btn.onclick=()=>{
+          const idx=parseInt(btn.dataset.idx);
+          p.tlLog.splice(idx,1);scheduleSave();renderTLSteps(p);renderList();
+        };
+      });
+    }
+
+    box.querySelector('.tl-add-btn').onclick=()=>{
+      const row=document.getElementById('tlR'+si);
+      row.style.display=row.style.display==='none'?'flex':'none';
+    };
+    box.querySelector('[data-confirm]').onclick=()=>{
+      const dateVal=document.getElementById('tlD'+si).value;
+      const dateStr=dateVal?dateVal.replace(/-/g,'/'):today();
+      if(!p.tlLog)p.tlLog=[];
+      p.tlLog.push({step:si,date:dateStr});
+      scheduleSave();renderTLSteps(p);renderList();
+    };
+  });
+}
+
+function openDetail(id){
+  currentId=id;const p=roster.find(x=>x.id===id);if(!p)return;
+  document.getElementById('dname').textContent=p.name;
+  document.getElementById('drg').textContent=p.region;
+  document.getElementById('dShu').value=p.shu;
+  document.getElementById('dKnow').value=p.know;
+  buildRemindSelect(document.getElementById('dRemind'),p.remind||DEFAULT_REMIND);
+  renderNextContactBanner(p);
+  // update today button
+  const tb=document.getElementById('todayBtn');
+  if(tb){
+    if(p.today){tb.textContent='✅ 已在今日清單（點擊移除）';tb.classList.add('active');}
+    else{tb.textContent='📋 加入今日清單';tb.classList.remove('active');}
+  }
+  renderTLSteps(p);
+  renderNotes(p);
+  const nd=document.getElementById('noteDate');if(nd)nd.value=todayISO();
+  initCalDates();
+  show('detailPage');window.scrollTo(0,0);
+}
+
+document.getElementById('backBtn').onclick=()=>{show('listPage');renderList();};
+document.getElementById('todayBtn').onclick=()=>{
+  const p=roster.find(x=>x.id===currentId);if(!p)return;
+  p.today=!p.today;
+  const tb=document.getElementById('todayBtn');
+  if(p.today){tb.textContent='✅ 已在今日清單（點擊移除）';tb.classList.add('active');}
+  else{tb.textContent='📋 加入今日清單';tb.classList.remove('active');}
+  scheduleSave();
+};
+document.getElementById('editBtn').onclick=()=>openAddPage(currentId);
+document.getElementById('dShu').onchange=()=>{const p=roster.find(x=>x.id===currentId);if(p){p.shu=parseInt(document.getElementById('dShu').value);scheduleSave();}};
+document.getElementById('dKnow').onchange=()=>{const p=roster.find(x=>x.id===currentId);if(p){p.know=parseInt(document.getElementById('dKnow').value);scheduleSave();}};
+document.getElementById('dRemind').onchange=()=>{const p=roster.find(x=>x.id===currentId);if(p){p.remind=parseInt(document.getElementById('dRemind').value);renderNextContactBanner(p);scheduleSave();}};
+
+function renderNotes(p){
+  const list=document.getElementById('notesList');if(!list)return;list.innerHTML='';
+  if(!p.notes||!p.notes.length){list.innerHTML='<div class="no-notes">還沒有聯絡紀錄</div>';return;}
+  [...p.notes].reverse().forEach((n,ri)=>{
+    const i=p.notes.length-1-ri;
+    const item=document.createElement('div');item.className='note-item';
+    item.innerHTML='<button class="note-del">刪除</button><div class="note-date">'+n.date+'</div><div class="note-text"></div>';
+    item.querySelector('.note-text').textContent=n.text;
+    item.querySelector('.note-del').onclick=()=>{const p2=roster.find(x=>x.id===currentId);if(!p2)return;p2.notes.splice(i,1);scheduleSave();renderNotes(p2);renderNextContactBanner(p2);};
+    list.appendChild(item);
+  });
+}
+
+document.getElementById('noteAddBtn').onclick=()=>{
+  const inp=document.getElementById('noteInput');const v=inp.value.trim();if(!v)return;
+  const p=roster.find(x=>x.id===currentId);if(!p)return;
+  if(!p.notes)p.notes=[];
+  const dateEl=document.getElementById('noteDate');
+  const d=dateEl&&dateEl.value?dateEl.value.replace(/-/g,'/'):today();
+  p.notes.push({date:d,text:v});
+  inp.value='';scheduleSave();renderNotes(p);renderNextContactBanner(p);
+};
+
+document.querySelectorAll('.fbtn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');vFilter=btn.dataset.f;renderList();
+  });
+});
+
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const t=tab.dataset.tab;
+    document.getElementById('rosterSection').style.display=t==='roster'?'block':'none';
+    document.getElementById('journalSection').style.display=t==='journal'?'block':'none';
+    if(t==='journal')renderJournal();
+  });
+});
+
+function renderJournal(){
+  const dateEl=document.getElementById('journalDate');
+  const list=document.getElementById('journalList');
+  if(!dateEl||!dateEl.value){if(list)list.innerHTML='<div class="journal-empty">請選擇日期</div>';return;}
+  const target=dateEl.value.replace(/-/g,'/');
+  const results=[];
+  roster.forEach(p=>{
+    const noteMatches=(p.notes||[]).filter(n=>n.date===target);
+    const tlMatches=(p.tlLog||[]).filter(e=>e.date===target);
+    if(noteMatches.length||tlMatches.length) results.push({p,noteMatches,tlMatches});
+  });
+  list.innerHTML='';
+  if(!results.length){list.innerHTML='<div class="journal-empty">這天沒有聯絡紀錄</div>';return;}
+  results.forEach(({p,noteMatches,tlMatches})=>{
+    const item=document.createElement('div');item.className='journal-item';
+    let entries='';
+    noteMatches.forEach(n=>{entries+='<div class="journal-entry"><div class="journal-entry-label">聯絡紀錄</div></div>';});
+    tlMatches.forEach(e=>{entries+='<div class="journal-entry"><div class="journal-entry-label">天龍：'+(TL_STEPS[e.step]||'')+'</div></div>';});
+    item.innerHTML='<div class="journal-name"></div><div class="journal-rg">'+p.region+'</div><div class="journal-entries">'+entries+'</div>';
+    item.querySelector('.journal-name').textContent=p.name;
+    const noteEls=item.querySelectorAll('.journal-entry');
+    noteMatches.forEach((n,i)=>{const el=noteEls[i].querySelector('.journal-entry-label');el.after(document.createTextNode(n.text));});
+    item.onclick=()=>openDetail(p.id);
+    list.appendChild(item);
+  });
+}
+
+document.getElementById('journalDate').addEventListener('change',renderJournal);
+document.getElementById('journalPrev').onclick=()=>{
+  const el=document.getElementById('journalDate');
+  if(!el.value){el.value=todayISO();renderJournal();return;}
+  const d=new Date(el.value);d.setDate(d.getDate()-1);el.value=d.toISOString().slice(0,10);renderJournal();
+};
+document.getElementById('journalNext').onclick=()=>{
+  const el=document.getElementById('journalDate');
+  if(!el.value){el.value=todayISO();renderJournal();return;}
+  const d=new Date(el.value);d.setDate(d.getDate()+1);el.value=d.toISOString().slice(0,10);renderJournal();
+};
+
+function openAddPage(id){
+  editingId=id||null;
+  const p=id?roster.find(x=>x.id===id):null;
+  document.getElementById('addPageTitle').textContent=p?'編輯聯絡人':'新增聯絡人';
+  document.getElementById('aName').value=p?p.name:'';
+  buildRegionSelect(document.getElementById('aRegion'),p?p.region:(regionFilter!=='全部'?regionFilter:REGIONS[0]));
+  document.getElementById('aShu').value=p?p.shu:0;
+  document.getElementById('aKnow').value=p?p.know:0;
+  buildRemindSelect(document.getElementById('aRemind'),p?p.remind:DEFAULT_REMIND);
+  document.getElementById('aDelBtn').style.display=p?'block':'none';
+  show('addPage');window.scrollTo(0,0);
+}
+
+document.getElementById('fabBtn').onclick=()=>openAddPage(null);
+document.getElementById('addBack').onclick=()=>{if(editingId){show('detailPage');}else{show('listPage');renderList();}};
+
+document.getElementById('aSaveBtn').onclick=()=>{
+  const name=document.getElementById('aName').value.trim();if(!name){alert('請輸入姓名');return;}
+  const region=document.getElementById('aRegion').value;
+  const shu=parseInt(document.getElementById('aShu').value);
+  const know=parseInt(document.getElementById('aKnow').value);
+  const remind=parseInt(document.getElementById('aRemind').value);
+  if(editingId){
+    const p=roster.find(x=>x.id===editingId);
+    if(p){p.name=name;p.region=region;p.shu=shu;p.know=know;p.remind=remind;}
+    scheduleSave();initRegion();renderList();
+    document.getElementById('dname').textContent=name;
+    document.getElementById('drg').textContent=region;
+    show('detailPage');
+  }else{
+    roster.unshift({id:'p_'+Date.now(),name,region,shu,know,remind,notes:[],tlLog:[]});
+    scheduleSave();
+    regionFilter=region; vFilter='all';
+    initRegion();
+    document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+    const allBtn=document.querySelector('.fbtn[data-f="all"]');if(allBtn)allBtn.classList.add('active');
+    renderList();show('listPage');
+  }
+};
+
+document.getElementById('aDelBtn').onclick=()=>{
+  if(!editingId)return;
+  const p=roster.find(x=>x.id===editingId);if(!p)return;
+  if(confirm('確定要刪除「'+p.name+'」嗎？')){
+    roster=roster.filter(x=>x.id!==editingId);
+    scheduleSave();initRegion();renderList();show('listPage');
+  }
+};
+
+
+
+
+// ===== GOOGLE CALENDAR =====
+const GCAL_SCOPE='https://www.googleapis.com/auth/calendar.events';
+let gcalClientId=localStorage.getItem('gcal_client_id')||'';
+let gcalToken=null;
+let gcalCurrentPerson=null;
+
+function initGcal(){
+  if(!gcalClientId){
+    document.getElementById('calContent').style.opacity='0.5';
+    return;
+  }
+  document.getElementById('calContent').style.opacity='1';
+}
+
+document.getElementById('gcalSetupBtn').onclick=()=>{
+  const id=window.prompt('貼上你的 Google Client ID\n（格式：xxxxx.apps.googleusercontent.com）',gcalClientId||'');
+  if(id&&id.trim()){
+    gcalClientId=id.trim();
+    localStorage.setItem('gcal_client_id',gcalClientId);
+    alert('Client ID 已儲存！');
+    initGcal();
+  }
+};
+
+function getGcalToken(callback){
+  if(gcalToken){callback(gcalToken);return;}
+  if(!gcalClientId){alert('請先設定 Google Client ID');return;}
+  const client=google.accounts.oauth2.initTokenClient({
+    client_id:gcalClientId,
+    scope:GCAL_SCOPE,
+    callback:(resp)=>{
+      if(resp.error){alert('授權失敗：'+resp.error);return;}
+      gcalToken=resp.access_token;
+      setTimeout(()=>{gcalToken=null;},3500000);
+      callback(gcalToken);
+    }
+  });
+  client.requestAccessToken();
+}
+
+function addCalEvent(type){
+  const p=roster.find(x=>x.id===currentId);if(!p)return;
+  const dateEl=document.getElementById(type==='meet'?'calMeetDate':'calRemindDate');
+  const timeEl=document.getElementById(type==='meet'?'calMeetTime':'calRemindTime');
+  const noteEl=document.getElementById(type==='meet'?'calMeetNote':'calRemindNote');
+  const statusEl=document.getElementById(type==='meet'?'calMeetStatus':'calRemindStatus');
+  const btn=document.getElementById(type==='meet'?'calMeetBtn':'calRemindBtn');
+
+  if(!dateEl.value){alert('請選擇日期');return;}
+
+  const dateStr=dateEl.value;
+  const timeStr=timeEl.value||'10:00';
+  const note=noteEl.value.trim();
+  const title=type==='meet'?'見面：'+p.name:'聯絡提醒：'+p.name;
+  const desc=note||(type==='meet'?'與 '+p.name+' 見面':'記得聯絡 '+p.name);
+
+  const start=dateStr+'T'+timeStr+':00';
+  const endHour=parseInt(timeStr.split(':')[0])+1;
+  const end=dateStr+'T'+endHour.toString().padStart(2,'0')+':'+timeStr.split(':')[1]+':00';
+
+  const event={
+    summary:title,
+    description:desc,
+    start:{dateTime:start,timeZone:'Asia/Taipei'},
+    end:{dateTime:end,timeZone:'Asia/Taipei'},
+    reminders:{useDefault:false,overrides:[{method:'popup',minutes:30}]}
+  };
+
+  btn.disabled=true;
+  statusEl.className='cal-status';statusEl.textContent='';
+
+  getGcalToken(async(token)=>{
+    try{
+      const res=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{
+        method:'POST',
+        headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify(event)
+      });
+      if(!res.ok)throw new Error('新增失敗 '+res.status);
+      statusEl.className='cal-status ok';
+      statusEl.textContent='✅ 已新增到 Google 行事曆！';
+      noteEl.value='';
+    }catch(e){
+      gcalToken=null;
+      statusEl.className='cal-status err';
+      statusEl.textContent='❌ 新增失敗，請重試。';
+    }
+    btn.disabled=false;
+  });
+}
+
+// init calendar dates when opening detail
+function initCalDates(){
+  const today=todayISO();
+  const meetDate=document.getElementById('calMeetDate');
+  const remindDate=document.getElementById('calRemindDate');
+  if(meetDate)meetDate.value=today;
+  if(remindDate)remindDate.value=today;
+  initGcal();
+}
+
+if(ghToken){startApp();}else{show('setupPage');}
+</script></body></html>
